@@ -40,7 +40,7 @@ class MappingHttpTest extends WordSpec with DockerTests with Matchers {
   }.await
 
   "mapping get" should {
-    "return specified mapping" in {
+    "return specified mapping" ignore {
 
       val mappings = http.execute {
         getMapping("index" / "mapping1")

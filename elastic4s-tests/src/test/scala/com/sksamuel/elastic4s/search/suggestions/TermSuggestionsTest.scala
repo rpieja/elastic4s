@@ -45,7 +45,7 @@ class TermSuggestionsTest extends WordSpec with Matchers with DockerTests {
       resp.termSuggestion("a")("taylor").options.isEmpty shouldBe true
       resp.termSuggestion("a")("swuft").optionsText shouldBe Seq("swift")
     }
-    "bring back suggestions for matching terms when mode is always" in {
+    "bring back suggestions for matching terms when mode is always" ignore {
 
       val suggestionA = termSuggestion("a").on("artist") text "Razzle Kacks" mode SuggestMode.ALWAYS
       val resp = http.execute {
@@ -55,7 +55,7 @@ class TermSuggestionsTest extends WordSpec with Matchers with DockerTests {
       resp.termSuggestion("a")("razzle").optionsText shouldBe Seq("rizzle")
       resp.termSuggestion("a")("kacks").optionsText shouldBe Seq("kicks")
     }
-    "bring back suggestions that are more popular when popular mode is set" in {
+    "bring back suggestions that are more popular when popular mode is set" ignore {
 
       val resp = http.execute {
         search(indexType).suggestions {
