@@ -17,6 +17,8 @@ import scala.concurrent.Future
 
 class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends HttpRequestClient {
 
+
+
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   // needed for the future flatMap/onComplete in the end
@@ -35,13 +37,22 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends Ht
     val sb = new StringBuilder(endpoint)
     if (sb.charAt(0) != '/')
       sb.insert(0, "/")
-    val requestHost: String = elasticsearchClientUri.uri + sb.mkString
-    val parameters: String =
-      params.map { case (k, v) => s"${k}=${v}" }.mkString("&")
-    val uriString: String = requestHost + "?" + parameters
 
-    val requestUri = Uri(uriString)
-    println("URI: " + requestUri.toString())
+    //Work in progress URI Builder TODO: Sensible uri concat tool
+
+    val requestUri = s"${elasticsearchClientUri.uri}$endpoint?${params.map { case (k, v) => k + "=" + v }.mkString("&")}"
+
+    //println(requestUri)
+    //OLD URI BUILDER
+//    val requestHost: String = elasticsearchClientUri.uri + sb.mkString
+//    val parameters: String =
+//      params.map { case (k, v) => s"${k}=${v}" }.mkString("&")
+//    val uriString: String = requestHost + "?" + parameters
+//
+//    val requestUri = Uri(uriString)
+//    println("URI: " + requestUri.toString())
+
+
     //    println("Uri: " + elasticsearchClientUri.uri)
     //    println("Endpoint: " + endpoint)
     //    println("Parameters: " + parameters)
