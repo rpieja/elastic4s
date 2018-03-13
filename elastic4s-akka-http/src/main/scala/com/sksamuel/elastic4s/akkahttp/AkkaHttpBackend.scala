@@ -35,20 +35,20 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends Ht
     val sb = new StringBuilder(endpoint)
     if (sb.charAt(0) != '/')
       sb.insert(0, "/")
-    val requestUri: String = elasticsearchClientUri.uri + sb.mkString
+    val requestHost: String = elasticsearchClientUri.uri + sb.mkString
     val parameters: String =
       params.map { case (k, v) => s"${k}=${v}" }.mkString("&")
-    val fin: String = requestUri + "?" + parameters
+    val uriString: String = requestHost + "?" + parameters
 
-    val urri = Uri(fin)
-    println("URI: " + urri.toString())
+    val requestUri = Uri(uriString)
+    println("URI: " + requestUri.toString())
     //    println("Uri: " + elasticsearchClientUri.uri)
     //    println("Endpoint: " + endpoint)
     //    println("Parameters: " + parameters)
     //    println("Final uri: " + fin)
     //    println("Entity: " + entity + "\n-----")
     //    println(requestUri)
-    HttpRequest(method = met, uri = urri, entity = entity)
+    HttpRequest(method = met, uri = requestUri, entity = entity)
   }
 
   def concat(a: ByteString, b: ByteString): ByteString = a ++ b
@@ -57,18 +57,16 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends Ht
     //    f.map { resp =>
     //      println("Status code: " + resp.status.intValue())
     //    }
-    val z = for {
-      response <- f
-      data <- response.entity.dataBytes.runWith(Sink.fold(ByteString())(concat)).map(_.decodeString("UTF-8"))
+    val response = for {
+      resp <- f
+      data <- resp.entity.dataBytes.runWith(Sink.fold(ByteString())(concat)).map(_.decodeString("UTF-8"))
     } yield HttpResponse(
-      response.status.intValue(),
-      Some(StringEntity(data, response.headers.find(_.is("content-type")).map(_.value()))),
-      response.headers.map(x => (x.name(), x.value())).toMap
+      resp.status.intValue(),
+      Some(StringEntity(data, resp.headers.find(_.is("content-type")).map(_.value()))),
+      resp.headers.map(x => (x.name(), x.value())).toMap
     )
-
-    z.andThen { case x => println("RESPONSE:\n" + x.get.entity + "\n-------") }
-
-    z
+    response.andThen { case x => println("RESPONSE:\n" + x.get.entity + "\n-------") }
+    response
   }
 
   override def async(method: String, endpoint: String, params: Map[String, Any]): Future[HttpResponse] = {
@@ -76,12 +74,10 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends Ht
     processResponse(response)
   }
 
-
   override def async(method: String, endpoint: String, params: Map[String, Any], entity: HttpEntity): Future[HttpResponse] = {
     var reqEntity: RequestEntity = entity match {
-      case StringEntity(content: String, contentType: Option[String]) => {
+      case StringEntity(content: String, contentType: Option[String]) =>
         AkkaHttpEntity(ContentTypes.`application/json`, content)
-      }
       case _ => ???
     }
     val req = request(method, endpoint, params, reqEntity)
