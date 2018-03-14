@@ -21,7 +21,6 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends Ht
 
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
-  // needed for the future flatMap/onComplete in the end
   implicit val executionContext = system.dispatcher
 
   private def request(method: String, endpoint: String, params: Map[String, Any],
@@ -34,27 +33,19 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends Ht
       case "HEAD" => HttpMethods.HEAD
       case "DELETE" => HttpMethods.DELETE
     }
-    val sb = new StringBuilder(endpoint)
-    if (sb.charAt(0) != '/')
-      sb.insert(0, "/")
+    val endpointFormatter = new StringBuilder(endpoint)
+    if (endpointFormatter.charAt(0) != '/')
+      endpointFormatter.insert(0, "/")
 
-    //Work in progress URI Builder TODO: Sensible uri concat tool
+    //Work in progress URI Builder
 
-    val requestUri = s"${elasticsearchClientUri.uri}$endpoint?${params.map { case (k, v) => k + "=" + v }.mkString("&")}"
-
-    //println(requestUri)
-    //OLD URI BUILDER
-//    val requestHost: String = elasticsearchClientUri.uri + sb.mkString
-//    val parameters: String =
-//      params.map { case (k, v) => s"${k}=${v}" }.mkString("&")
-//    val uriString: String = requestHost + "?" + parameters
-//
-//    val requestUri = Uri(uriString)
-//    println("URI: " + requestUri.toString())
+    val requestUri = s"${elasticsearchClientUri.uri}${endpointFormatter.mkString}?${params.map { case (k, v) => k + "=" + v }.mkString("&")}".stripSuffix("?")
+    println("Request URI: "+requestUri)
 
 
+    //Debug prints
     //    println("Uri: " + elasticsearchClientUri.uri)
-    //    println("Endpoint: " + endpoint)
+    println("Endpoint: " + endpointFormatter.mkString)
     //    println("Parameters: " + parameters)
     //    println("Final uri: " + fin)
     //    println("Entity: " + entity + "\n-----")
@@ -65,9 +56,6 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends Ht
   def concat(a: ByteString, b: ByteString): ByteString = a ++ b
 
   private def processResponse(f: Future[akka.http.scaladsl.model.HttpResponse]): Future[HttpResponse] = {
-    //    f.map { resp =>
-    //      println("Status code: " + resp.status.intValue())
-    //    }
     val response = for {
       resp <- f
       data <- resp.entity.dataBytes.runWith(Sink.fold(ByteString())(concat)).map(_.decodeString("UTF-8"))
