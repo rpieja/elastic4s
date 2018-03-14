@@ -1,6 +1,7 @@
 package com.sksamuel.elastic4s.akkahttp
 
 import akka.actor.ActorSystem
+import akka.http.javadsl.model.headers.RawRequestURI
 import akka.stream.ActorMaterializer
 import akka.http.scaladsl.{Http, model}
 import akka.http.scaladsl.model._
@@ -12,11 +13,9 @@ import com.sksamuel.elastic4s.http.HttpEntity.{FileEntity, InputStreamEntity, St
 import com.sksamuel.elastic4s.http.{HttpEntity, HttpRequestClient, HttpResponse}
 
 import scala.concurrent.Future
-
 import scala.concurrent.Future
 
 class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends HttpRequestClient {
-
 
 
   implicit val system = ActorSystem()
@@ -37,19 +36,23 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends Ht
     if (endpointFormatter.charAt(0) != '/')
       endpointFormatter.insert(0, "/")
 
-    //Work in progress URI Builder
+    val requestUri = s"${elasticsearchClientUri.uri}${endpointFormatter.mkString.replace("%2B", "%25")}?${
+      params.map { case (k, v) => k + "=" + v }
+        .mkString("&")
+    }"
+      .stripSuffix("?")
 
-    val requestUri = s"${elasticsearchClientUri.uri}${endpointFormatter.mkString}?${params.map { case (k, v) => k + "=" + v }.mkString("&")}".stripSuffix("?")
-    println("Request URI: "+requestUri)
+    val uri = Uri(requestUri, Uri.ParsingMode.Relaxed)
 
 
     //Debug prints
-    //    println("Uri: " + elasticsearchClientUri.uri)
-    println("Endpoint: " + endpointFormatter.mkString)
-    //    println("Parameters: " + parameters)
-    //    println("Final uri: " + fin)
-    //    println("Entity: " + entity + "\n-----")
-    //    println(requestUri)
+    //    println("ParsedUri="+uri)
+    //println("Endpoint=" + endpointFormatter.mkString)
+    //    println("URI=" + requestUri)
+    //    println("Method=" + method)
+    //    println("Parameters=" + parameters)
+    //    println("RequestEntity=" + entity)
+
     HttpRequest(method = met, uri = requestUri, entity = entity)
   }
 
@@ -64,7 +67,7 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends Ht
       Some(StringEntity(data, resp.headers.find(_.is("content-type")).map(_.value()))),
       resp.headers.map(x => (x.name(), x.value())).toMap
     )
-    response.andThen { case x => println("RESPONSE:\n" + x.get.entity + "\n-------") }
+    //response.andThen { case x => println("Response: " + x.get.entity) }
     response
   }
 
