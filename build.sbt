@@ -17,6 +17,7 @@ lazy val root = Project("elastic4s", file("."))
     core,
     tcp,
     http,
+    akka,
     embedded,
     tests,
     testkit,
@@ -92,6 +93,22 @@ lazy val http = Project("elastic4s-http", file("elastic4s-http"))
   )
   .dependsOn(core)
 
+lazy val akka = Project("elastic4s-akka-http", file("elastic4s-akka-http"))
+  .settings(
+    name := "elastic4s-akka-http",
+    publishTo := Some(Resolver.file("elastic4s-akka-http ",  new File(Path.userHome.absolutePath+"/.m2/repository"))),
+    libraryDependencies ++= Seq(
+      "com.typesafe.akka"           %% "akka-http"                 % "10.1.0",
+      "com.typesafe.akka"           %% "akka-stream"               % "2.5.10",
+      "org.elasticsearch.client"     % "elasticsearch-rest-client" % ElasticsearchVersion,
+      "org.apache.logging.log4j"     % "log4j-api"                 % Log4jVersion % "test",
+      "com.fasterxml.jackson.core"   % "jackson-core"              % JacksonVersion,
+      "com.fasterxml.jackson.core"   % "jackson-databind"          % JacksonVersion,
+      "com.fasterxml.jackson.module" %% "jackson-module-scala"     % JacksonVersion exclude ("org.scala-lang", "scala-library")
+    )
+  )
+  .dependsOn(http)
+
 lazy val xpacksecurity = Project("elastic4s-xpack-security", file("elastic4s-xpack-security"))
   .settings(
     name := "elastic4s-xpack-security",
@@ -118,7 +135,7 @@ lazy val testkit = Project("elastic4s-testkit", file("elastic4s-testkit"))
       "org.scalatest" %% "scalatest" % ScalatestVersion
     )
   )
-  .dependsOn(core, embedded, http)
+  .dependsOn(core, embedded, http, akka)
 
 lazy val httpstreams = Project("elastic4s-http-streams", file("elastic4s-http-streams"))
   .settings(
@@ -202,7 +219,7 @@ lazy val tests = Project("elastic4s-tests", file("elastic4s-tests"))
     Test / parallelExecution := false,
     Test / testForkedParallel := false
   )
-  .dependsOn(tcp, http, jackson, circe, aws, testkit % "test")
+  .dependsOn(tcp, http, akka, jackson, circe, aws, testkit % "test")
 
 lazy val docsMappingsAPIDir = settingKey[String]("Name of subdirectory in site target directory for api docs")
 
