@@ -14,24 +14,27 @@ import com.sksamuel.elastic4s.http.{HttpEntity, HttpRequestClient, HttpResponse}
 import scala.concurrent.Future
 import scala.util.Random
 
-class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri, hosts: List[(String, Int)] = null) extends HttpRequestClient {
+class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri, hosts: List[(String, Int)] = null)
+    extends HttpRequestClient {
   def this(hosts: List[(String, Int)]) = this(null, hosts)
 
-  implicit val system = ActorSystem()
-  implicit val materializer = ActorMaterializer()
+  implicit val system           = ActorSystem()
+  implicit val materializer     = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
   private def getRandomHostUri = ElasticsearchClientUri(Random.shuffle(hosts).head._1, Random.shuffle(hosts).head._2)
 
-
-  private def request(method: String, endpoint: String, params: Map[String, Any],
-                      entity: akka.http.scaladsl.model.RequestEntity = akka.http.scaladsl.model.HttpEntity.Empty):
-  HttpRequest = {
+  private def request(
+    method: String,
+    endpoint: String,
+    params: Map[String, Any],
+    entity: akka.http.scaladsl.model.RequestEntity = akka.http.scaladsl.model.HttpEntity.Empty
+  ): HttpRequest = {
     val met: HttpMethod = method.toUpperCase match {
-      case "PUT" => HttpMethods.PUT
-      case "GET" => HttpMethods.GET
-      case "POST" => HttpMethods.POST
-      case "HEAD" => HttpMethods.HEAD
+      case "PUT"    => HttpMethods.PUT
+      case "GET"    => HttpMethods.GET
+      case "POST"   => HttpMethods.POST
+      case "HEAD"   => HttpMethods.HEAD
       case "DELETE" => HttpMethods.DELETE
     }
     val endpointFormatter = new StringBuilder(endpoint)
@@ -40,17 +43,15 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri, hosts: Lis
 
     val host = elasticsearchClientUri match {
       case null => getRandomHostUri
-      case _ => elasticsearchClientUri
+      case _    => elasticsearchClientUri
     }
 
-    val requestUri = s"${host.uri}${endpointFormatter.mkString.replace("%2B", "%25")}?${
-      params.map { case (k, v) => k + "=" + v }
-        .mkString("&")
-    }"
+    val requestUri = s"${host.uri}${endpointFormatter.mkString.replace("%2B", "%25")}?${params
+      .map { case (k, v) => k + "=" + v }
+      .mkString("&")}"
       .stripSuffix("?")
 
     val uri = Uri(requestUri, Uri.ParsingMode.Relaxed)
-
 
     //Debug prints
     //    println("ParsedUri="+uri)
@@ -69,11 +70,12 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri, hosts: Lis
     val response = for {
       resp <- f
       data <- resp.entity.dataBytes.runWith(Sink.fold(ByteString())(concat)).map(_.decodeString("UTF-8"))
-    } yield HttpResponse(
-      resp.status.intValue(),
-      Some(StringEntity(data, resp.headers.find(_.is("content-type")).map(_.value()))),
-      resp.headers.map(x => (x.name(), x.value())).toMap
-    )
+    } yield
+      HttpResponse(
+        resp.status.intValue(),
+        Some(StringEntity(data, resp.headers.find(_.is("content-type")).map(_.value()))),
+        resp.headers.map(x => (x.name(), x.value())).toMap
+      )
     //response.andThen { case x => println("Response: " + x.get.entity) }
     response
   }
@@ -83,13 +85,16 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri, hosts: Lis
     processResponse(response)
   }
 
-  override def async(method: String, endpoint: String, params: Map[String, Any], entity: HttpEntity): Future[HttpResponse] = {
+  override def async(method: String,
+                     endpoint: String,
+                     params: Map[String, Any],
+                     entity: HttpEntity): Future[HttpResponse] = {
     var reqEntity: RequestEntity = entity match {
       case StringEntity(content: String, contentType: Option[String]) =>
         AkkaHttpEntity(ContentTypes.`application/json`, content)
       case _ => ???
     }
-    val req = request(method, endpoint, params, reqEntity)
+    val req      = request(method, endpoint, params, reqEntity)
     val response = Http().singleRequest(req)
     processResponse(response)
   }

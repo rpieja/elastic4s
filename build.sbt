@@ -96,10 +96,10 @@ lazy val http = Project("elastic4s-http", file("elastic4s-http"))
 lazy val akka = Project("elastic4s-akka-http", file("elastic4s-akka-http"))
   .settings(
     name := "elastic4s-akka-http",
-    publishTo := Some(Resolver.file("elastic4s-akka-http ",  new File(Path.userHome.absolutePath+"/.m2/repository"))),
+    publishTo := Some(Resolver.file("elastic4s-akka-http ", new File(Path.userHome.absolutePath + "/.m2/repository"))),
     libraryDependencies ++= Seq(
-      "com.typesafe.akka"           %% "akka-http"                 % "10.1.0",
-      "com.typesafe.akka"           %% "akka-stream"               % "2.5.10",
+      "com.typesafe.akka"            %% "akka-http"                % "10.1.0",
+      "com.typesafe.akka"            %% "akka-stream"              % "2.5.10",
       "org.elasticsearch.client"     % "elasticsearch-rest-client" % ElasticsearchVersion,
       "org.apache.logging.log4j"     % "log4j-api"                 % Log4jVersion % "test",
       "com.fasterxml.jackson.core"   % "jackson-core"              % JacksonVersion,
