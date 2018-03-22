@@ -12,13 +12,17 @@ import com.sksamuel.elastic4s.http.HttpEntity.StringEntity
 import com.sksamuel.elastic4s.http.{HttpEntity, HttpRequestClient, HttpResponse}
 
 import scala.concurrent.Future
+import scala.util.Random
 
-class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends HttpRequestClient {
-
+class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri, hosts: List[(String, Int)] = null) extends HttpRequestClient {
+  def this(hosts: List[(String, Int)]) = this(null, hosts)
 
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
+
+  private def getRandomHostUri = ElasticsearchClientUri(Random.shuffle(hosts).head._1, Random.shuffle(hosts).head._2)
+
 
   private def request(method: String, endpoint: String, params: Map[String, Any],
                       entity: akka.http.scaladsl.model.RequestEntity = akka.http.scaladsl.model.HttpEntity.Empty):
@@ -34,7 +38,12 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri) extends Ht
     if (endpointFormatter.charAt(0) != '/')
       endpointFormatter.insert(0, "/")
 
-    val requestUri = s"${elasticsearchClientUri.uri}${endpointFormatter.mkString.replace("%2B", "%25")}?${
+    val host = elasticsearchClientUri match {
+      case null => getRandomHostUri
+      case _ => elasticsearchClientUri
+    }
+
+    val requestUri = s"${host.uri}${endpointFormatter.mkString.replace("%2B", "%25")}?${
       params.map { case (k, v) => k + "=" + v }
         .mkString("&")
     }"
