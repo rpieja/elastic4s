@@ -14,9 +14,7 @@ import com.sksamuel.elastic4s.http.{HttpEntity, HttpRequestClient, HttpResponse}
 import scala.concurrent.Future
 import scala.util.Random
 
-class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri, hosts: List[(String, Int)] = null)
-    extends HttpRequestClient {
-  def this(hosts: List[(String, Int)]) = this(null, hosts)
+class AkkaHttpBackend(hosts: Seq[(String, Int)]) extends HttpRequestClient {
 
   implicit val system           = ActorSystem()
   implicit val materializer     = ActorMaterializer()
@@ -41,25 +39,22 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri, hosts: Lis
     if (endpointFormatter.charAt(0) != '/')
       endpointFormatter.insert(0, "/")
 
-    val host = elasticsearchClientUri match {
-      case null => getRandomHostUri
-      case _    => elasticsearchClientUri
-    }
+    val host = getRandomHostUri
 
     val requestUri = s"${host.uri}${endpointFormatter.mkString.replace("%2B", "%25")}?${params
       .map { case (k, v) => k + "=" + v }
       .mkString("&")}"
       .stripSuffix("?")
-
-    val uri = Uri(requestUri, Uri.ParsingMode.Relaxed)
+      .stripPrefix("elasticsearch://")
 
     //Debug prints
-    //    println("ParsedUri="+uri)
     //println("Endpoint=" + endpointFormatter.mkString)
-    //    println("URI=" + requestUri)
-    //    println("Method=" + method)
-    //    println("Parameters=" + parameters)
-    //    println("RequestEntity=" + entity)
+    //println("URI=" + requestUri)
+    //println("Method=" + method)
+    //println("Parameters=" + params)
+    //println("RequestEntity=" + entity)
+
+    val uri: Uri = Uri(requestUri, Uri.ParsingMode.Relaxed)
 
     HttpRequest(method = met, uri = requestUri, entity = entity)
   }
@@ -76,7 +71,6 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri, hosts: Lis
         Some(StringEntity(data, resp.headers.find(_.is("content-type")).map(_.value()))),
         resp.headers.map(x => (x.name(), x.value())).toMap
       )
-    //response.andThen { case x => println("Response: " + x.get.entity) }
     response
   }
 
@@ -100,4 +94,9 @@ class AkkaHttpBackend(elasticsearchClientUri: ElasticsearchClientUri, hosts: Lis
   }
 
   override def close(): Unit = ???
+}
+
+object AkkaHttpBackend {
+  def apply(hosts: Seq[(String, Int)]): AkkaHttpBackend    = new AkkaHttpBackend(hosts)
+  def apply(host: ElasticsearchClientUri): AkkaHttpBackend = new AkkaHttpBackend(host.hosts)
 }
